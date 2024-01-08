@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -7,7 +8,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  const MyHomePage({Key? key}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -41,63 +42,79 @@ class _MyHomePageState extends State<MyHomePage> {
   late int correctAnswer;
   late List<int> answerBox;
 
-  late int question1 = Random().nextInt(10);
-  late int question2 = Random().nextInt(10);
+  late int question1;
+  late int question2;
+
+  late List<Color> boxColors;
 
   int score = 0;
 
-  late List<String> randomizeQuestions;
+  late String question;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize boxColors with the default color
+    boxColors = List.filled(4, Colors.blue.shade900);
+
     startGame();
   }
 
   void startGame() {
-    question1 = rand.nextInt(10);
-    question2 = rand.nextInt(10);
-    randomizeQuestions = [
-      "$question1 + $question2 = ",
-      "$question1 - $question2 = ",
-      "$question1 * $question2 = ",
-      "$question1 / $question2 = ",
-    ];
+    int selectedQuestionIndex = rand.nextInt(4);
+    setState(() {
+      question1 = rand.nextInt(50) + 1;
+      question2 = rand.nextInt(50) + 1;
 
-    do {
-      question1 = rand.nextInt(10);
-      question2 = rand.nextInt(10);
-    } while (randomizeQuestions[3] == "$question1 / $question2 = ");
+      switch (selectedQuestionIndex) {
+        case 0:
+          question = "$question1 + $question2 = ";
+          correctAnswer = question1 + question2;
+          break;
+        case 1:
+          question = "$question1 - $question2 = ";
+          correctAnswer = question1 - question2;
+          break;
+        case 2:
+          question = "$question1 * $question2 = ";
+          correctAnswer = question1 * question2;
+          break;
+        case 3:
+          question = "$question1 / $question2 = ";
+          correctAnswer = question1 ~/ question2;
+          break;
+        default:
+          question = "";
+          correctAnswer = 0;
+      }
 
-    switch (rand.nextInt(4)) {
-      case 0:
-        correctAnswer = question1 + question2;
-        break;
-      case 1:
-        correctAnswer = question1 - question2;
-        break;
-      case 2:
-        correctAnswer = question1 * question2;
-        break;
-      case 3:
-        correctAnswer = (question1 / question2).floor();
-        break;
-      default:
-        correctAnswer = 0;
-    }
+      print("The selected question index is: $selectedQuestionIndex");
+      print("The question is: $question");
+      print("The correct answer is: $correctAnswer");
+    });
 
-    answerBox = [];
-    generateUniqueNumbers();
-    answerBox[rand.nextInt(4)] = correctAnswer;
+    generateCorrectAnswer();
   }
 
-  void generateUniqueNumbers() {
-    Set<int> uniqueNumbers = <int>{};
-    while (uniqueNumbers.length < 4) {
-      int newNumber = rand.nextInt(10);
-      uniqueNumbers.add(newNumber);
+  void generateCorrectAnswer() {
+    Set<int> correctNum = <int>{};
+
+    correctNum.add(correctAnswer);
+
+    for (int i = 0; i < 3; i++) {
+      int wrongNumber;
+      do {
+        wrongNumber = rand.nextInt(99);
+      } while (correctNum.contains(wrongNumber));
+      correctNum.add(wrongNumber);
     }
-    answerBox = uniqueNumbers.toList()..shuffle();
+
+    List<int> answerList = correctNum.toList();
+
+    answerList.shuffle();
+
+    answerBox = answerList;
   }
 
   void nextQuestion() {
@@ -105,15 +122,35 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void checkAnswer(int selectedAnswer) {
-    if (selectedAnswer == correctAnswer) {
-      print('Correct!');
+    bool isCorrect = selectedAnswer == correctAnswer;
+
+    if (!isCorrect) {
+      setState(() {
+        score -= 1;
+        boxColors = List.generate(
+            4,
+            (index) => index == answerBox.indexOf(correctAnswer)
+                ? Colors.red.shade900
+                : Colors.blue.shade900);
+      });
+      print('Incorrect!');
+    } else {
       setState(() {
         score += 1;
+        boxColors = List.generate(
+            4,
+            (index) => index == answerBox.indexOf(correctAnswer)
+                ? Colors.green.shade900
+                : Colors.blue.shade900);
+      });
+    }
+
+    Future.delayed(const Duration(seconds: 2), () {
+      setState(() {
+        boxColors = List.filled(4, Colors.blue.shade900);
       });
       nextQuestion();
-    } else {
-      print('Incorrect!');
-    }
+    });
   }
 
   @override
@@ -173,8 +210,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: [
                   Center(
                     child: Text(
-                      randomizeQuestions[
-                          rand.nextInt(randomizeQuestions.length)],
+                      question,
                       style: TextStyle(
                           fontSize: 30,
                           color: Colors.deepPurple[900],
@@ -207,10 +243,10 @@ class _MyHomePageState extends State<MyHomePage> {
                       height: 40,
                       width: 40,
                       decoration: BoxDecoration(
-                        color: Colors.blueAccent,
+                        color: boxColors[index], // Use boxColors[index] here
                         borderRadius: BorderRadius.circular(10.0),
                         border: Border.all(
-                          color: Colors.blue.shade900,
+                          color: Colors.blueAccent.shade700,
                           width: 2.0,
                         ),
                       ),
@@ -218,9 +254,10 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: Text(
                           answerBox[index].toString(),
                           style: const TextStyle(
-                              fontSize: 30,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
+                            fontSize: 30,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
